@@ -4,7 +4,8 @@ import fetch from "node-fetch";
 const app = express();
 app.use(express.json());
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
 function systemPrompt(mode) {
   if (mode === "view") {
@@ -40,34 +41,37 @@ app.post("/analyze", async (req, res) => {
   const { text, mode } = req.body;
 
   try {
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.3,
-          messages: [
-            { role: "system", content: systemPrompt(mode) },
-            { role: "user", content: text }
-          ]
-        })
-      }
-    );
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: systemPrompt(mode) },
+          { role: "user", content: text }
+        ]
+      })
+    });
 
     const data = await response.json();
+
+    if (!data.choices) {
+      return res.status(500).json({ error: "DeepSeek API error", details: data });
+    }
+
     res.json({ result: data.choices[0].message.content });
+
   } catch (e) {
-    res.status(500).json({ error: "AI error" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 app.get("/", (req, res) => {
-  res.send("Backend работает");
+  res.send("Backend работает (DeepSeek)");
 });
 
 const PORT = process.env.PORT || 3000;
